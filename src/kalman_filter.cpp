@@ -25,6 +25,9 @@ void KalmanFilter::Predict() {
   TODO:
     * predict the state
   */
+   x_ = F_ * x_ ; // There is no external motion, so, we do not have to add "+u"
+  MatrixXd Ft = F_.transpose();
+  P_ = F_ * P_ * Ft + Q_;
 }
 
 void KalmanFilter::Update(const VectorXd &z) {
@@ -32,6 +35,16 @@ void KalmanFilter::Update(const VectorXd &z) {
   TODO:
     * update the state by using Kalman Filter equations
   */
+   VectorXd y = z - (H_ * x_); // error computation
+  MatrixXd Ht = H_.transpose();
+  MatrixXd S = H_ * P_ * Ht + R_;
+  MatrixXd Si = S.inverse();
+  MatrixXd K =  P_ * Ht * Si;
+  // New state
+  x_ = x_ + (K * y);
+  int x_size = x_.size();
+  MatrixXd I = MatrixXd::Identity(x_size, x_size);
+  P_ = (I - K * H_) * P_;
 }
 
 void KalmanFilter::UpdateEKF(const VectorXd &z) {
@@ -39,4 +52,27 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
   TODO:
     * update the state by using Extended Kalman Filter equations
   */
+  double rho = sqrt(x_(0)*x_(0) + x_(1)*x_(1));
+  double theta = atan2(x_(1) , x_(0));
+  double rho_dot ;
+if (fabs(rho) < 0.0001) {
+		rho_dot = 0;
+	} else {
+		rho_dot = (x_(0)*x_(2) + x_(1)*x_(3))/rho;
+  }
+
+  VectorXd z_pred = VectorXd(3); 
+  z_pred << rho, theta, rho_dot;
+  
+  VectorXd y = z - z_pred;
+ y(1) = atan2(sin(y(1)), cos(y(1)));
+  MatrixXd Ht = H_.transpose();
+  MatrixXd S = H_ * P_ * Ht + R_;
+  MatrixXd Si = S.inverse();
+  MatrixXd K =  P_ * Ht * Si;
+  // New state
+  x_ = x_ + (K * y);
+  int x_size = x_.size();
+  MatrixXd I = MatrixXd::Identity(x_size, x_size);
+  P_ = (I - K * H_) * P_;
 }
